@@ -19,7 +19,7 @@ export const CUSTOM_ITEM_OFFSET = {
 	// When adding custom items, add a new version or update the count in the current version
 	// Offset is calculated automatically based on timestamp
 	v1: {
-		count: 12, //46,// Update this when adding custom items
+		count: 0, // Update this when adding custom items
 		timestamp: Date.now(),
 		description: 'Initial version without custom items'
 	},
@@ -109,3 +109,4 @@ export function logOffsetState() {
  * // Or more organized with a new version
  * v2: { count: 5, timestamp: ..., description: 'Added 5 custom items' }
  */
+
