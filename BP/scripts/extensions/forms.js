@@ -1,13 +1,7 @@
-import { Container, system } from '@minecraft/server';
 import { ActionFormData } from '@minecraft/server-ui';
 import { custom_content, custom_content_keys, inventory_enabled, number_of_custom_items, CHEST_UI_SIZES } from './constants.js';
 import { typeIdToDataId, typeIdToID } from './typeIds.js';
 import { getTotalCustomItemOffset } from './itemIdConfig.js';
-
-// Track pending auto-reopen timeouts per player to prevent conflicts
-// When control buttons are clicked, pending timeouts are automatically cancelled
-const pendingAutoReopens = new Map(); // playerId -> timeoutId
-
 
 // Helper: Get display texture for unregistered items
 function getDisplayTexture(texture) {
@@ -141,16 +135,7 @@ class ChestFormData {
 		}
 		return this;
 	}
-	show(player, options = {}) {
-		const { autoReopenInventory = false, priceCalculator = null, hideInventorySlot = null } = options;
-
-		// Cancel any pending auto-reopens for this player to prevent conflicts
-		const playerId = player.id;
-		if (pendingAutoReopens.has(playerId)) {
-			system.clearRun(pendingAutoReopens.get(playerId));
-			pendingAutoReopens.delete(playerId);
-		}
-
+	show(player) {
 		const form = new ActionFormData().title(this.#titleText);
 		this.#buttonArray.forEach(button => {
 			form.button(button[0], button[1]?.toString());
@@ -177,13 +162,6 @@ class ChestFormData {
 				continue;
 			}
 
-			// Check if this slot should be hidden (e.g., already in sell queue)
-			const shouldHide = hideInventorySlot ? hideInventorySlot(i) : false;
-			if (shouldHide) {
-				form.button('', undefined);
-				continue;
-			}
-
 			const typeId = item.typeId;
 			const displayTexture = getDisplayTexture(typeId);
 			const targetTexture = custom_content_keys.has(displayTexture) ? custom_content[displayTexture]?.texture : displayTexture;
@@ -202,48 +180,15 @@ class ChestFormData {
 			const loreText = item.getLore().join('\n');
 			if (loreText) buttonRawtext.rawtext.push({ text: loreText });
 
-			// Add price information if calculator provided
-			if (priceCalculator) {
-				try {
-					const priceText = priceCalculator(item);
-					if (priceText) {
-						buttonRawtext.rawtext.push({ text: `\n§7Worth: §a${priceText}` });
-					}
-				} catch (e) {
-					// Silently ignore price calculation errors
-				}
-			}
-
 			const finalID = ID === undefined ? targetTexture : (ID + (ID < 256 ? 0 : totalOffset)) * 65536;
 			form.button(buttonRawtext, finalID.toString());
 		}
 
-		// Return wrapped response with inventory slot mapping and auto-reopen
+		// Return wrapped response with inventory slot mapping
 		return form.show(player).then(response => {
 			if (!response.canceled && response.selection !== undefined) {
 				// Add inventorySlot property if button clicked is an inventory item
 				response.inventorySlot = inventorySlotMap.get(response.selection) ?? null;
-
-				// Add reopen helper
-				response.reopen = () => this.show(player, options);
-
-				// ✅ UNIVERSAL AUTO-REOPEN: Works for ALL modules
-				// Cancel any pending reopen on ANY click (prevents double reopen)
-				if (pendingAutoReopens.has(playerId)) {
-					system.clearRun(pendingAutoReopens.get(playerId));
-					pendingAutoReopens.delete(playerId);
-				}
-
-				// Schedule reopen ONLY for inventory clicks
-				// autoReopenInventory option allows modules to disable if needed
-				if (autoReopenInventory && response.inventorySlot !== null) {
-					const timeoutId = system.runTimeout(() => {
-						// Don't delete here - keeps timeout ID for cancellation
-						this.show(player, options);
-					}, 3); // 3 ticks - reliable timing
-
-					pendingAutoReopens.set(playerId, timeoutId);
-				}
 			}
 			return response;
 		});
