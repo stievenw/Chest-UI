@@ -23,7 +23,6 @@
         "collection_name": "form_buttons",
         "layer": 1
     },
-    
     "chest_ui_template": {
         "type": "panel",
         "size": [
@@ -47,7 +46,7 @@
                     "type": "image",
                     "texture": "$border_and_background_texture",
                     "layer": 0,
-                    "size": [ // this line took a decade to figure out
+                    "size": [
                         "100%c + 14px",
                         "100%c + 11px"
                     ],
@@ -130,7 +129,6 @@
             }
         ]
     },
-    // Add dynamic/custom sizing scales and edit forms.js -> sizes
     "chest_panel": {
         "type": "panel",
         "size": [
@@ -316,7 +314,27 @@
                         16
                     ],
                     "layer": 4,
-                    "bindings": "$aux_id"
+                    "bindings": [
+                        {
+                            "binding_name": "#form_button_texture",
+                            "binding_type": "collection",
+                            "binding_collection_name": "form_buttons"
+                        },
+                        {
+                            "binding_type": "collection_details",
+                            "binding_collection_name": "form_buttons"
+                        },
+                        {
+                            "binding_type": "view",
+                            "source_property_name": "(not (('%.8s' * #form_button_texture) = 'textures'))",
+                            "target_property_name": "#visible"
+                        },
+                        {
+                            "binding_type": "view",
+                            "source_property_name": "((#form_button_texture - (#form_button_texture % 65536)) / 65536)",
+                            "target_property_name": "#item_id_aux"
+                        }
+                    ]
                 }
             },
             {
@@ -341,10 +359,30 @@
                         16
                     ],
                     "layer": 4,
-                    "bindings": "$aux_id",
                     "offset": [
                         1,
                         1
+                    ],
+                    "bindings": [
+                        {
+                            "binding_name": "#form_button_texture",
+                            "binding_type": "collection",
+                            "binding_collection_name": "form_buttons"
+                        },
+                        {
+                            "binding_type": "collection_details",
+                            "binding_collection_name": "form_buttons"
+                        },
+                        {
+                            "binding_type": "view",
+                            "source_property_name": "(not (('%.8s' * #form_button_texture) = 'textures'))",
+                            "target_property_name": "#visible"
+                        },
+                        {
+                            "binding_type": "view",
+                            "source_property_name": "((#form_button_texture - (#form_button_texture % 65536)) / 65536)",
+                            "target_property_name": "#item_id_aux"
+                        }
                     ]
                 }
             },
@@ -384,7 +422,27 @@
                         16
                     ],
                     "layer": 4,
-                    "bindings": "$aux_id"
+                    "bindings": [
+                        {
+                            "binding_name": "#form_button_texture",
+                            "binding_type": "collection",
+                            "binding_collection_name": "form_buttons"
+                        },
+                        {
+                            "binding_type": "collection_details",
+                            "binding_collection_name": "form_buttons"
+                        },
+                        {
+                            "binding_type": "view",
+                            "source_property_name": "(not (('%.8s' * #form_button_texture) = 'textures'))",
+                            "target_property_name": "#visible"
+                        },
+                        {
+                            "binding_type": "view",
+                            "source_property_name": "((#form_button_texture - (#form_button_texture % 65536)) / 65536)",
+                            "target_property_name": "#item_id_aux"
+                        }
+                    ]
                 }
             },
             {
