@@ -1860,7 +1860,7 @@ export const typeIdToID = new Map([
 	['minecraft:resin_brick_double_slab', -1015],
 	['minecraft:sandstone_double_slab', -878],
 	['minecraft:sapling', 800],
-	['minecraft:shulker_box', 815],
+	['minecraft:shulker_box', 218],
 	['minecraft:skull', 743],
 	['minecraft:smooth_quartz_double_slab', -925],
 	['minecraft:smooth_red_sandstone_double_slab', -918],
