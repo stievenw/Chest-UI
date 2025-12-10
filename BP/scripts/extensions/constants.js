@@ -44,3 +44,4 @@ export const CHEST_UI_SIZES = new Map([
 	[45, ['§c§h§e§s§t§4§5§r', 45]],
 	[54, ['§c§h§e§s§t§5§4§r', 54]]
 ]);
+

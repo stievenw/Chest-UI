@@ -1,6 +1,31 @@
 import { Player, RawMessage } from "@minecraft/server";
 import { ActionFormResponse } from "@minecraft/server-ui";
 
+/**
+ * Enhanced response from ChestFormData that includes inventory slot mapping
+ */
+interface ChestFormResponse extends ActionFormResponse {
+	/** Map of button index to actual inventory slot number */
+	inventorySlotMap: Map<number, number>;
+	/** Number of control buttons before auto-inventory starts */
+	controlButtonCount: number;
+	/** 
+	 * Inventory slot number if an inventory item was clicked, null otherwise.
+	 * Use this to detect inventory clicks and handle them appropriately.
+	 */
+	inventorySlot: number | null;
+	/**
+	 * Set to true in your handler to prevent auto-reopen (if enabled).
+	 * IMPORTANT: Set this immediately when handling inventory clicks to prevent timing issues.
+	 */
+	handled?: boolean;
+	/**
+	 * Helper function to manually reopen the form.
+	 * Useful when you want to handle the reopen timing yourself.
+	 */
+	reopen?: () => void;
+}
+
 declare class ChestFormData {
 	/**
 	 * @param size The size of the chest to display as.
@@ -46,16 +71,32 @@ declare class ChestFormData {
 	pattern(pattern: string[], key: { [key: string]: { itemName?: string | RawMessage, itemDesc?: (string | RawMessage)[], stackSize?: number, enchanted?: boolean, durability?: number, texture: string } }): ChestFormData;
 	/**
 	  * @remarks
-	  * Creates and shows this modal popup form. Returns
-	  * asynchronously when the player confirms or cancels the
-	  * dialog.
+	  * Creates and shows this modal popup form. Returns asynchronously when the player confirms or cancels the dialog.
+	  * 
+	  * Response includes inventory slot mapping for clickable items.
+	  * 
+	  * **AUTO-REOPEN FEATURE:**
+	  * By default, clicking inventory items will auto-reopen the form (anti-close).
+	  * Set `options.autoReopenInventory = false` if your form has menu buttons to avoid timing conflicts.
+	  * 
+	  * **IMPORTANT:** When disabling auto-reopen, you MUST handle inventory clicks manually:
+	  * ```typescript
+	  * form.show(player, { autoReopenInventory: false }).then(response => {
+	  *     if (response.inventorySlot !== null) {
+	  *         response.handled = true;
+	  *         system.runTimeout(() => reopenForm(), 3);
+	  *         return;
+	  *     }
+	  *     // Handle menu buttons...
+	  * });
+	  * ```
 	  *
 	  * This function can't be called in read-only mode.
 	  *
-	  * @param player
-	  * Player to show this dialog to.
-	 */
-	show(player: Player): Promise<ActionFormResponse>;
+	  * @param player Player to show this dialog to.
+	  * @param options Optional configuration { autoReopenInventory?: boolean }
+	  */
+	show(player: Player, options?: { autoReopenInventory?: boolean }): Promise<ChestFormResponse>;
 }
 declare class FurnaceFormData {
 	/**
@@ -86,13 +127,13 @@ declare class FurnaceFormData {
 	  * @remarks
 	  * Creates and shows this modal popup form. Returns
 	  * asynchronously when the player confirms or cancels the
-	  * dialog.
+	  * dialog. Response includes inventory slot mapping for clickable items.
 	  *
 	  * This function can't be called in read-only mode.
 	  *
 	  * @param player
 	  * Player to show this dialog to.
-	 */
-	show(player: Player): Promise<ActionFormResponse>;
+	  */
+	show(player: Player): Promise<ChestFormResponse>;
 }
-export { ChestFormData, FurnaceFormData };
+export { ChestFormData, FurnaceFormData, ChestFormResponse };
