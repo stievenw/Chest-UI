@@ -803,4 +803,4 @@ class FurnaceFormData {
 	}
 }
 
-export { ChestFormData, FurnaceFormData, getVariantTypeId };
+export { ChestFormData, FurnaceFormData, getVariantTypeId, buildJavaStyleLore };
