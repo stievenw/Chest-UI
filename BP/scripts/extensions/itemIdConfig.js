@@ -2,24 +2,23 @@
  * Item ID Configuration & Management System
  * 
  * This system manages ID offsets for custom items without needing to modify modules that use the extension.
- * When adding custom items, simply update the configuration here.
+ * When adding custom items, simply update the count configuration here.
  * 
  * HOW TO USE:
- * 1. When adding a new custom item to custom_content in constants.js
- * 2. Add an entry in CUSTOM_ITEM_OFFSET with the estimated number of items
+ * 1. Count all your custom items
+ * 2. Update the count in CUSTOM_ITEM_OFFSET
  * 3. All ID calculations will automatically adjust
  */
 
 /**
  * Tracking for added custom items
- * Format: { version: { count: number of custom items, offset: ID offset applied } }
+ * Format: { version: { count: number of custom items } }
  */
 export const CUSTOM_ITEM_OFFSET = {
-	// Example structure for addon version tracking
-	// When adding custom items, add a new version or update the count in the current version
-	// Offset is calculated automatically based on timestamp
+	// When adding custom items, update the count in current version
+	// Or create a new version for better tracking
 	v1: {
-		count: 0, // Update this when adding custom items
+		count: 0, // <-- Update this number when adding custom items
 		timestamp: Date.now(),
 		description: 'Initial version without custom items'
 	},
@@ -41,7 +40,7 @@ export function getTotalCustomItemOffset() {
 /**
  * Safely calculate ID by considering custom item offset
  * @param {number|undefined} ID - ID from typeIdToID or typeIdToDataId
- * @param {number} number_of_custom_items - Number of custom items from constants.js
+ * @param {number} number_of_custom_items - Number of custom items (fallback)
  * @returns {number|undefined} Offset ID or undefined if ID is invalid
  */
 export function calculateSafeItemID(ID, number_of_custom_items) {
@@ -63,7 +62,7 @@ export function calculateSafeItemID(ID, number_of_custom_items) {
 /**
  * Calculate final texture ID for ChestUI with offset
  * @param {number} ID - ID from typeIdToID or typeIdToDataId
- * @param {number} number_of_custom_items - Number of custom items
+ * @param {number} number_of_custom_items - Number of custom items (fallback)
  * @param {boolean} enchanted - Whether the item is enchanted
  * @returns {number} Final texture ID for form button
  */
@@ -91,22 +90,20 @@ export function logOffsetState() {
 /**
  * GUIDE FOR ADDING NEW CUSTOM ITEMS:
  * 
- * 1. Edit custom_content in constants.js, add custom item
- * 2. In this file, update CUSTOM_ITEM_OFFSET:
- *    - If adding 5 custom items, increment count in the latest version
- *    - Or create a new version if you want more detailed tracking
+ * 1. Count the total number of your custom items
+ * 2. Update CUSTOM_ITEM_OFFSET in this file:
+ *    - Increment the count in the current version
+ *    - Or create a new version for detailed tracking
  * 3. All modules using ChestFormData will automatically adapt
- * 4. No need to change forms.js or other modules
  * 
- * EXAMPLE ADDITION:
+ * EXAMPLE:
  * 
- * // Currently in v1 with 0 custom items
- * v1: { count: 0, timestamp: ..., description: '...' }
+ * // Before adding custom items
+ * v1: { count: 0, ... }
  * 
  * // After adding 5 custom items
- * v1: { count: 5, timestamp: ..., description: '...' }
+ * v1: { count: 5, ... }
  * 
- * // Or more organized with a new version
- * v2: { count: 5, timestamp: ..., description: 'Added 5 custom items' }
+ * // Or with new version for better organization
+ * v2: { count: 5, description: 'Added 5 custom items' }
  */
-
