@@ -1,85 +1,128 @@
-# ChestFormData Inventory Click Handling
+# ChestFormData - Inventory Click Handling Guide
 
-## The Pattern
+## Quick Pattern
 
-When using [ChestFormData] with inventory display, always handle inventory clicks manually:
+When using `ChestFormData` with inventory display, handle inventory clicks to prevent the menu from closing:
 
 ```javascript
 form.show(player).then(response => {
     if (response.canceled) return;
     
-    const slot = response.selection;
-    
-    // ✅ Handle inventory clicks FIRST
-    if (response.inventorySlot !== null && response.inventorySlot !== undefined) {
-        system.runTimeout(() => showThisMenu(player), 1);
+    // ✅ ALWAYS check inventory clicks FIRST
+    if (response.inventorySlot !== null) {
+        system.runTimeout(() => reopenMenu(player), 1);
         return;
     }
     
     // Handle menu button clicks
+    const slot = response.selection;
     if (slot === 0) {
-        // Action or navigate
+        // Button action...
     }
 });
 ```
 
 ## Key Rules
 
-1. **Check inventory FIRST** - Before any button handlers
-2. **Use 1 tick delay** - `system.runTimeout(..., 1)`
-3. **Return immediately** - Don't process button logic
-4. **Reopen same form** - Call the menu function again
+1. **Check `inventorySlot` FIRST** - Before any button logic
+2. **Use 1-tick delay** - `system.runTimeout(..., 1)`
+3. **Return immediately** - Don't continue to button handlers
+4. **Reopen the same form** - Call your menu function again
 
-## Common Scenarios
+## Understanding `inventorySlot`
 
-### Info Button (reopen same menu)
+The `response` object includes:
+- **`inventorySlot`**: The player's inventory slot number (0-35) if clicked, or `null` if a menu button was clicked
+- **`inventorySlotMap`**: Map of button indices to inventory slots (advanced usage)
+- **`selection`**: The button index that was clicked
+
+## Common Patterns
+
+### Menu with Info Button
 ```javascript
-if (slot === 10) {
-    // No action needed - inventory handler will reopen
-}
-```
-
-### Navigation Button
-```javascript
-if (slot === 20) {
-    system.runTimeout(() => otherMenu(player), 5);
-}
-```
-
-### Close Button
-```javascript
-if (slot === 30) {
-    player.sendMessage('Menu closed');
-    return; // Don't reopen
-}
-```
-
-## Complete Example
-
-```javascript
-export function showMyMenu(player) {
+export function showInfoMenu(player) {
     const form = new ChestFormData('27');
-    form.title('My Menu');
-    
-    form.button(0, 'Info', ['Click for info'], 'minecraft:book');
-    form.button(18, 'Close', ['Exit'], 'minecraft:barrier');
+    form.title('Info Menu');
+    form.button(13, 'Information', ['Click to view'], 'minecraft:book');
     
     form.show(player).then(response => {
         if (response.canceled) return;
         
-        const slot = response.selection;
-        
-        // Inventory handler
-        if (response.inventorySlot !== null && response.inventorySlot !== undefined) {
-            system.runTimeout(() => showMyMenu(player), 1);
+        // Inventory reopen
+        if (response.inventorySlot !== null) {
+            system.runTimeout(() => showInfoMenu(player), 1);
             return;
         }
         
-        // Button handlers
-        if (slot === 0) {
-            // Info button - do nothing, auto-reopen handles it
-        } else if (slot === 18) {
-            player.sendMessage('Closed');
+        // Info button - show message then reopen
+        if (response.selection === 13) {
+            player.sendMessage('§aHere is some info!');
+            system.runTimeout(() => showInfoMenu(player), 5);
+        }
+    });
+}
+```
+
+### Menu with Navigation
+```javascript
+export function showMainMenu(player) {
+    const form = new ChestFormData('27');
+    form.title('Main Menu');
+    form.button(10, 'Settings', [...], 'minecraft:gear');
+    form.button(16, 'Close', [...], 'minecraft:barrier');
+    
+    form.show(player).then(response => {
+        if (response.canceled) return;
+        
+        // Inventory reopen
+        if (response.inventorySlot !== null) {
+            system.runTimeout(() => showMainMenu(player), 1);
+            return;
+        }
+        
+        const slot = response.selection;
+        
+        // Navigate to settings
+        if (slot === 10) {
+            system.runTimeout(() => showSettingsMenu(player), 5);
+        }
+        // Close button
+        else if (slot === 16) {
+            player.sendMessage('§cMenu closed');
+            // Don't reopen
+        }
+    });
+}
+```
+
+### Menu with Pagination
+```javascript
+export function showPagedMenu(player, page = 0) {
+    const form = new ChestFormData('54');
+    form.title(`Items - Page ${page + 1}`);
+    
+    // Previous/Next buttons
+    if (page > 0) {
+        form.button(45, '◀ Back', [...], 'minecraft:arrow');
+    }
+    form.button(53, 'Next ▶', [...], 'minecraft:arrow');
+    
+    form.show(player).then(response => {
+        if (response.canceled) return;
+        
+        // Inventory reopen
+        if (response.inventorySlot !== null) {
+            system.runTimeout(() => showPagedMenu(player, page), 1);
+            return;
+        }
+        
+        const slot = response.selection;
+        
+        // Navigation
+        if (slot === 45 && page > 0) {
+            system.runTimeout(() => showPagedMenu(player, page - 1), 5);
+        } else if (slot === 53) {
+            system.runTimeout(() => showPagedMenu(player, page + 1), 5);
         }
     });
 }
@@ -87,24 +130,60 @@ export function showMyMenu(player) {
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| UI closes after inventory → button click | Add inventory handler at start |
-| UI reopens twice | Remove duplicate reopens (auto + manual) |
-| Inventory click doesn't reopen | Check 1 tick delay exists |
-| Button doesn't work | Ensure inventory handler returns early |
+| Problem | Solution |
+|---------|----------|
+| Menu closes when clicking inventory | Add `inventorySlot` check at the start |
+| Menu reopens twice | Remove duplicate reopen calls |
+| Buttons don't work after inventory click | Ensure `return` after inventory handler |
+| Delay feels wrong | Use 1 tick for inventory, 5 ticks for navigation |
 
-## forms.js Setting
+## Best Practices
 
-Default: `autoReopenInventory = false` (manual control recommended)
+✅ **DO:**
+- Check `inventorySlot` before any button logic
+- Use `system.runTimeout(() => menu(player), 1)` for inventory reopens
+- Use `system.runTimeout(() => nextMenu(player), 5)` for navigation
+- Return early after inventory handler
 
-To enable auto (not recommended):
+❌ **DON'T:**
+- Skip the inventory check if you have menu buttons
+- Use longer delays for inventory reopens (causes flickering)
+- Continue to button handlers after inventory detection
+- Forget to import `system` from `@minecraft/server`
+
+## Template
+
+Copy this template for new menus:
+
 ```javascript
-form.show(player, { autoReopenInventory: true })
+import { system } from '@minecraft/server';
+import { ChestFormData } from '../path/to/forms.js';
+
+export function showMyMenu(player) {
+    const form = new ChestFormData('27');
+    form.title('My Menu');
+    
+    // Add your buttons
+    form.button(0, 'Button 1', ['Description'], 'minecraft:diamond');
+    
+    form.show(player).then(response => {
+        if (response.canceled) return;
+        
+        // Inventory handler (ALWAYS FIRST)
+        if (response.inventorySlot !== null) {
+            system.runTimeout(() => showMyMenu(player), 1);
+            return;
+        }
+        
+        // Button handlers
+        const slot = response.selection;
+        if (slot === 0) {
+            // Handle button 1
+        }
+    });
+}
 ```
 
-## Why Manual Control?
+---
 
-Auto-reopen and manual handlers run in same `.then()` callback → race condition → unpredictable behavior.
-
-Manual control = full predictability.
+**Note:** This pattern ensures smooth UX where clicking inventory items doesn't accidentally close your menu.
