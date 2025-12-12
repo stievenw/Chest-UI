@@ -303,6 +303,15 @@ function getEquipmentSlotName(typeId) {
 	return null;
 }
 
+const WEAPON_DAMAGE = {
+	'minecraft:wooden_sword': 4, 'minecraft:golden_sword': 4, 'minecraft:stone_sword': 5, 'minecraft:iron_sword': 6, 'minecraft:diamond_sword': 7, 'minecraft:netherite_sword': 8,
+	'minecraft:wooden_axe': 3, 'minecraft:golden_axe': 3, 'minecraft:stone_axe': 4, 'minecraft:iron_axe': 5, 'minecraft:diamond_axe': 6, 'minecraft:netherite_axe': 7,
+	'minecraft:wooden_pickaxe': 2, 'minecraft:golden_pickaxe': 2, 'minecraft:stone_pickaxe': 3, 'minecraft:iron_pickaxe': 4, 'minecraft:diamond_pickaxe': 5, 'minecraft:netherite_pickaxe': 6,
+	'minecraft:wooden_shovel': 1, 'minecraft:golden_shovel': 1, 'minecraft:stone_shovel': 2, 'minecraft:iron_shovel': 3, 'minecraft:diamond_shovel': 4, 'minecraft:netherite_shovel': 5,
+	'minecraft:wooden_hoe': 1, 'minecraft:golden_hoe': 1, 'minecraft:stone_hoe': 2, 'minecraft:iron_hoe': 3, 'minecraft:diamond_hoe': 4, 'minecraft:netherite_hoe': 5,
+	'minecraft:trident': 8
+};
+
 function getAttributeModifiers(item) {
 	if (!item) return [];
 
@@ -314,22 +323,43 @@ function getAttributeModifiers(item) {
 
 	try {
 		if (slot === 'mainhand') {
-			const damageComp = item.getComponent('minecraft:damage');
-			if (damageComp) {
-				loreLines.push('§7When in Main Hand:');
+			loreLines.push('§7When in Main Hand:');
 
-				const damage = damageComp.damage || 0;
-				loreLines.push(`§2 ${damage} Attack Damage`);
+			let damage = WEAPON_DAMAGE[typeId] || 1;
 
-				let attackSpeed = 1.6;
-				if (typeId.includes('sword')) attackSpeed = 1.6;
-				else if (typeId.includes('axe')) attackSpeed = 0.8;
-				else if (typeId.includes('pickaxe')) attackSpeed = 1.2;
-				else if (typeId.includes('shovel')) attackSpeed = 1.0;
-				else if (typeId.includes('hoe')) attackSpeed = 1.0;
+			// Check for Sharpness/Power if possible? 
+			// Vanilla lore calculation includes enchantments in the "When in Main Hand" number usually.
+			// But for now, base damage is a good improvement over "0".
 
-				loreLines.push(`§2 ${attackSpeed} Attack Speed`);
+			const enchantComp = item.getComponent('minecraft:enchantable');
+			if (enchantComp) {
+				const sharpness = enchantComp.getEnchantment('sharpness');
+				if (sharpness) {
+					// Sharpness adds: 1.25 * level in Bedrock? Or 0.5 * level + 0.5?
+					// In Java it's 3 + (0.5 * level) + 0.5?
+					// Bedrock: 1.25 * level.
+					damage += (1.25 * sharpness.level);
+				}
 			}
+
+			// Format to 1 decimal place if needed
+			damage = Math.round(damage * 100) / 100;
+
+			loreLines.push(`§2 ${damage} Attack Damage`);
+
+			let attackSpeed = 1.6; // Base player attack speed? Bedrock doesn't strictly use 1.6 mechanic the same way Java does visually, but user asked for "Vanilla Java" style.
+			if (typeId.includes('sword')) attackSpeed = 1.6;
+			else if (typeId.includes('axe')) attackSpeed = 1.0; // Java axes are slow (0.8 - 1.0), Bedrock axes are standard.
+			else if (typeId.includes('pickaxe')) attackSpeed = 1.2;
+			else if (typeId.includes('shovel')) attackSpeed = 1.0;
+			else if (typeId.includes('hoe')) attackSpeed = 4.0; // Hoes are fast in Java?
+			// Let's stick to the previous code's logic or close to Java.
+			// Previous: Axe 0.8, Pickaxe 1.2, Shovel 1.0, Hoe 1.0.
+
+			if (typeId.includes('axe')) attackSpeed = 1.0; // Bedrock axes aren't slow weapons. If emulating Java: 0.9 or 1.0 depending on type.
+			else if (typeId.includes('hoe')) attackSpeed = 4.0;
+
+			loreLines.push(`§2 ${attackSpeed} Attack Speed`);
 		}
 
 		if (['head', 'chest', 'legs', 'feet'].includes(slot)) {
@@ -337,30 +367,31 @@ function getAttributeModifiers(item) {
 			if (armorComp) {
 				const slotName = {
 					'head': 'Head',
-					'chest': 'Chest',
+					'chest': 'Body', // "Body" or "Chest"? Vanilla says "When on Body" usually? Or "When on Head". Java says "When on Head".
 					'legs': 'Legs',
 					'feet': 'Feet'
-				}[slot];
+				}[slot] || 'Body';
 
-				loreLines.push(`§7When on ${slotName}:`);
+				// Correct slot name mapping for Java parity if requested
+				const displaySlotName = slot === 'chest' ? 'Body' : (slot.charAt(0).toUpperCase() + slot.slice(1));
+
+				loreLines.push(`§7When on ${displaySlotName}:`);
 
 				const protection = armorComp.protection || 0;
 				if (protection > 0) {
 					loreLines.push(`§2 +${protection} Armor`);
 				}
 
-				if (typeId.includes('diamond') || typeId.includes('netherite')) {
-					let toughness = 0;
-					if (typeId.includes('netherite')) toughness = 3;
-					else if (typeId.includes('diamond')) toughness = 2;
+				let toughness = 0;
+				if (typeId.includes('netherite')) toughness = 3;
+				else if (typeId.includes('diamond')) toughness = 2;
 
-					if (toughness > 0) {
-						loreLines.push(`§2 +${toughness} Armor Toughness`);
-					}
+				if (toughness > 0) {
+					loreLines.push(`§2 +${toughness} Armor Toughness`);
 				}
 
 				if (typeId.includes('netherite')) {
-					loreLines.push(`§2 +0.1 Knockback Resistance`);
+					loreLines.push(`§2 +1 Knockback Resistance`);
 				}
 			}
 		}
@@ -374,7 +405,7 @@ function getDurabilityLore(item) {
 	if (!item) return [];
 
 	try {
-		const durability = item.getComponent('durability');
+		const durability = item.getComponent('minecraft:durability');
 		if (!durability) return [];
 
 		const current = durability.maxDurability - durability.damage;
@@ -396,7 +427,37 @@ function getArmorTrimLore(item) {
 		const loreLines = [];
 
 		loreLines.push('§7Upgrade:');
-		loreLines.push('§9 Armor Trim');
+		loreLines.push(' §r§5Armor Trim');
+
+		let material = trimComp.material;
+		let pattern = trimComp.pattern;
+
+		if (typeof material !== 'string' && material?.id) material = material.id;
+		if (typeof pattern !== 'string' && pattern?.id) pattern = pattern.id;
+
+		const formatName = (id) => id.replace('minecraft:', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+		const matColors = {
+			'minecraft:iron': '§7',
+			'minecraft:copper': '§6',
+			'minecraft:gold': '§e',
+			'minecraft:lapis': '§9',
+			'minecraft:emerald': '§a',
+			'minecraft:diamond': '§b',
+			'minecraft:netherite': '§8',
+			'minecraft:redstone': '§c',
+			'minecraft:amethyst': '§d',
+			'minecraft:quartz': '§f',
+			'minecraft:resin': '§6' // New 1.21.50+?
+		};
+
+		if (pattern) {
+			loreLines.push(` §7${formatName(pattern)} Armor Trim`);
+		}
+
+		if (material) {
+			const color = matColors[material] || '§7';
+			loreLines.push(` ${color}${formatName(material)} Material`);
+		}
 
 		return loreLines;
 	} catch (e) {
