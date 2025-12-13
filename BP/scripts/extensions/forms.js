@@ -291,7 +291,8 @@ function getEquipmentSlotName(typeId) {
 	const lower = typeId.toLowerCase();
 
 	if (lower.includes('sword') || lower.includes('axe') || lower.includes('pickaxe') ||
-		lower.includes('shovel') || lower.includes('hoe') || lower.includes('trident')) {
+		lower.includes('shovel') || lower.includes('hoe') || lower.includes('trident') ||
+		lower.includes('spear') || lower.includes('mace')) {
 		return 'mainhand';
 	}
 
@@ -304,12 +305,23 @@ function getEquipmentSlotName(typeId) {
 }
 
 const WEAPON_DAMAGE = {
+	// Swords - Data akurat dari Minecraft Wiki Bedrock Edition
 	'minecraft:wooden_sword': 4, 'minecraft:golden_sword': 4, 'minecraft:stone_sword': 5, 'minecraft:iron_sword': 6, 'minecraft:diamond_sword': 7, 'minecraft:netherite_sword': 8,
+	// Axes - Bedrock Edition (1 damage kurang dari sword tier yang sama)
 	'minecraft:wooden_axe': 3, 'minecraft:golden_axe': 3, 'minecraft:stone_axe': 4, 'minecraft:iron_axe': 5, 'minecraft:diamond_axe': 6, 'minecraft:netherite_axe': 7,
+	// Pickaxes
 	'minecraft:wooden_pickaxe': 2, 'minecraft:golden_pickaxe': 2, 'minecraft:stone_pickaxe': 3, 'minecraft:iron_pickaxe': 4, 'minecraft:diamond_pickaxe': 5, 'minecraft:netherite_pickaxe': 6,
-	'minecraft:wooden_shovel': 1, 'minecraft:golden_shovel': 1, 'minecraft:stone_shovel': 2, 'minecraft:iron_shovel': 3, 'minecraft:diamond_shovel': 4, 'minecraft:netherite_shovel': 5,
-	'minecraft:wooden_hoe': 1, 'minecraft:golden_hoe': 1, 'minecraft:stone_hoe': 2, 'minecraft:iron_hoe': 3, 'minecraft:diamond_hoe': 4, 'minecraft:netherite_hoe': 5,
-	'minecraft:trident': 8
+	// Shovels
+	'minecraft:wooden_shovel': 2, 'minecraft:golden_shovel': 2, 'minecraft:stone_shovel': 3, 'minecraft:iron_shovel': 4, 'minecraft:diamond_shovel': 5, 'minecraft:netherite_shovel': 6,
+	// Hoes - All tiers deal 1 damage in Bedrock
+	'minecraft:wooden_hoe': 1, 'minecraft:golden_hoe': 1, 'minecraft:stone_hoe': 1, 'minecraft:iron_hoe': 1, 'minecraft:diamond_hoe': 1, 'minecraft:netherite_hoe': 1,
+	// Trident - Melee attack damage (Bedrock Edition)
+	'minecraft:trident': 8,
+	// Spears - Jab attack base damage (range 2-6 damage di Bedrock, estimasi berdasarkan tier)
+	// Note: Damage spesifik belum dirilis resmi kecuali Netherite (5 damage confirmed)
+	'minecraft:wooden_spear': 2, 'minecraft:stone_spear': 3, 'minecraft:copper_spear': 3, 'minecraft:golden_spear': 2, 'minecraft:iron_spear': 4, 'minecraft:diamond_spear': 4, 'minecraft:netherite_spear': 5,
+	// Mace - New weapon from 1.21 "Tricky Trials" update (base damage)
+	'minecraft:mace': 6
 };
 
 function getAttributeModifiers(item) {
@@ -345,21 +357,10 @@ function getAttributeModifiers(item) {
 			// Format to 1 decimal place if needed
 			damage = Math.round(damage * 100) / 100;
 
-			loreLines.push(`§2 ${damage} Attack Damage`);
+			loreLines.push(`§2 +${damage} Attack Damage`);
 
-			let attackSpeed = 1.6; // Base player attack speed? Bedrock doesn't strictly use 1.6 mechanic the same way Java does visually, but user asked for "Vanilla Java" style.
-			if (typeId.includes('sword')) attackSpeed = 1.6;
-			else if (typeId.includes('axe')) attackSpeed = 1.0; // Java axes are slow (0.8 - 1.0), Bedrock axes are standard.
-			else if (typeId.includes('pickaxe')) attackSpeed = 1.2;
-			else if (typeId.includes('shovel')) attackSpeed = 1.0;
-			else if (typeId.includes('hoe')) attackSpeed = 4.0; // Hoes are fast in Java?
-			// Let's stick to the previous code's logic or close to Java.
-			// Previous: Axe 0.8, Pickaxe 1.2, Shovel 1.0, Hoe 1.0.
-
-			if (typeId.includes('axe')) attackSpeed = 1.0; // Bedrock axes aren't slow weapons. If emulating Java: 0.9 or 1.0 depending on type.
-			else if (typeId.includes('hoe')) attackSpeed = 4.0;
-
-			loreLines.push(`§2 ${attackSpeed} Attack Speed`);
+			// Note: Bedrock Edition does not have attack cooldown/speed mechanic
+			// All weapons attack instantly without cooldown
 		}
 
 		if (['head', 'chest', 'legs', 'feet'].includes(slot)) {
@@ -417,47 +418,54 @@ function getDurabilityLore(item) {
 	}
 }
 
-function getArmorTrimLore(item) {
+function getPotionLore(item) {
 	if (!item) return [];
 
 	try {
-		const trimComp = item.getComponent('minecraft:trim');
-		if (!trimComp) return [];
+		const potionComp = item.getComponent('minecraft:potion');
+		if (!potionComp || !potionComp.potionEffectType) return [];
 
 		const loreLines = [];
 
-		loreLines.push('§7Upgrade:');
-		loreLines.push(' §r§5Armor Trim');
+		// Get effect type and duration
+		const effectType = potionComp.potionEffectType;
+		const effectId = effectType.id || effectType.name || '';
+		const durationTicks = effectType.durationTicks || 0;
 
-		let material = trimComp.material;
-		let pattern = trimComp.pattern;
+		if (!effectId) return [];
 
-		if (typeof material !== 'string' && material?.id) material = material.id;
-		if (typeof pattern !== 'string' && pattern?.id) pattern = pattern.id;
+		// Format effect name - remove "minecraft:" and clean up
+		let effectName = effectId.replace('minecraft:', '').replace(/_/g, ' ');
 
-		const formatName = (id) => id.replace('minecraft:', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-		const matColors = {
-			'minecraft:iron': '§7',
-			'minecraft:copper': '§6',
-			'minecraft:gold': '§e',
-			'minecraft:lapis': '§9',
-			'minecraft:emerald': '§a',
-			'minecraft:diamond': '§b',
-			'minecraft:netherite': '§8',
-			'minecraft:redstone': '§c',
-			'minecraft:amethyst': '§d',
-			'minecraft:quartz': '§f',
-			'minecraft:resin': '§6' // New 1.21.50+?
-		};
+		// Remove prefixes like "long_", "strong_", etc from display name
+		effectName = effectName.replace(/^(long|strong|extended|enhanced)\s+/, '');
 
-		if (pattern) {
-			loreLines.push(` §7${formatName(pattern)} Armor Trim`);
+		// Capitalize words
+		effectName = effectName
+			.split(' ')
+			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+
+		// Convert ticks to time format (20 ticks = 1 second)
+		const totalSeconds = Math.floor(durationTicks / 20);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+
+		let timeStr = '';
+		if (minutes > 0) {
+			timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		} else {
+			timeStr = `0:${seconds.toString().padStart(2, '0')}`;
 		}
 
-		if (material) {
-			const color = matColors[material] || '§7';
-			loreLines.push(` ${color}${formatName(material)} Material`);
-		}
+		// Determine color based on effect type (beneficial vs harmful)
+		const beneficialEffects = ['regeneration', 'speed', 'strength', 'jump_boost', 'resistance',
+			'fire_resistance', 'water_breathing', 'invisibility', 'night_vision',
+			'health_boost', 'absorption', 'saturation', 'luck', 'slow_falling', 'conduit_power'];
+		const isBeneficial = beneficialEffects.some(effect => effectId.toLowerCase().includes(effect));
+		const color = isBeneficial ? '§9' : '§c'; // Blue for beneficial, Red for harmful
+
+		loreLines.push(`${color}${effectName} (${timeStr})`);
 
 		return loreLines;
 	} catch (e) {
@@ -465,31 +473,22 @@ function getArmorTrimLore(item) {
 	}
 }
 
-function getComponentCount(item) {
-	if (!item) return 0;
 
-	try {
-		const components = item.getComponents();
-		return components.length;
-	} catch (e) {
-		return 0;
-	}
-}
 
 function buildJavaStyleLore(item) {
 	if (!item) return [];
 
 	const allLore = [];
 
-	const trimLore = getArmorTrimLore(item);
-	if (trimLore.length > 0) {
-		allLore.push(...trimLore);
-		allLore.push('');
-	}
-
 	const enchantLore = getEnchantmentLore(item);
 	if (enchantLore.length > 0) {
 		allLore.push(...enchantLore);
+		allLore.push('');
+	}
+
+	const potionLore = getPotionLore(item);
+	if (potionLore.length > 0) {
+		allLore.push(...potionLore);
 		allLore.push('');
 	}
 
@@ -501,13 +500,6 @@ function buildJavaStyleLore(item) {
 	const durabilityLore = getDurabilityLore(item);
 	if (durabilityLore.length > 0) {
 		allLore.push(...durabilityLore);
-	}
-
-	allLore.push(`§8${item.typeId}`);
-
-	const componentCount = getComponentCount(item);
-	if (componentCount > 0) {
-		allLore.push(`§8(${componentCount} components)`);
 	}
 
 	const customLore = item.getLore();
