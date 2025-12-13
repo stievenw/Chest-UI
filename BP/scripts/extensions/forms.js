@@ -502,6 +502,18 @@ function buildJavaStyleLore(item) {
 		allLore.push(...durabilityLore);
 	}
 
+	// TypeId and Component count (like Java Edition advanced tooltips)
+	allLore.push(`§8${item.typeId}`);
+
+	try {
+		const components = item.getComponents();
+		if (components && components.length > 0) {
+			allLore.push(`§8(${components.length} component${components.length !== 1 ? 's' : ''})`);
+		}
+	} catch (e) {
+		// Ignore if getComponents fails
+	}
+
 	const customLore = item.getLore();
 	if (customLore.length > 0) {
 		const filteredLore = customLore.filter(line => {
